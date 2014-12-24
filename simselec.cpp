@@ -30,8 +30,8 @@ int main(int argc, const char * argv[]) {
         
         // инициализируем начальные значения
         R[0] = (double)(rand())/RAND_MAX;
-        mean = rand() % nX;
-        variance = rand() % nX;
+        mean = rand() % nX + 1;
+        variance = rand() % nX + 1;
         
         // требуется генерация нескольких сл. базовых чисел R для получения одного нормального сл. значения
         for (int j = 0; j < nX; j++) { // для каждого значения X[j][]
