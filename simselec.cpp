@@ -3,6 +3,8 @@
 #include <random>
 #include <vector>
 
+// симуляция выборки из смеси одномерных (для простоты) нормальных распределений.
+
 using std::cout;
 using std::endl;
 
@@ -21,7 +23,7 @@ int lcm(int left, int right) {
     return left * right / gcd(left, right);
 }
 
-std::vector<int> getDenominators(std::vector<double> weights) {
+std::vector<int> getDenominators(std::vector<double> const &weights) {
     std::vector<int> denomenators;
     for (int i = 0; i < weights.size(); i++) {
         denomenators.push_back(1 / weights[i]);
@@ -30,7 +32,7 @@ std::vector<int> getDenominators(std::vector<double> weights) {
 }
 
 // Find the LCM of the denominators of the probabilities
-int getL(std::vector<int> denominators) {
+int getL(std::vector<int> &denominators) {
     int right, left = 1;
     while (!denominators.empty()) {
         right = denominators.back();
@@ -41,7 +43,7 @@ int getL(std::vector<int> denominators) {
 }
 
 // Simulating a Loaded Die with a Fair Die
-int sample_categorical(std::vector<double> weights) {
+int sample_categorical(std::vector<double> const &weights) {
     std::vector<int> denoms = getDenominators(weights);
     
     // Initialization
@@ -79,9 +81,9 @@ double sample_gaussian(int mean, int variance) {
     return distribution(generator);
 }
 
-std::vector<double> sample_mixture(std::vector<double> weights,    // \pi
-                                   std::vector<double> means,      // \mu
-                                   std::vector<double> variances,  // \Sigma
+std::vector<double> sample_mixture(std::vector<double> const &weights,    // \pi
+                                   std::vector<double> const &means,      // \mu
+                                   std::vector<double> const &variances,  // \Sigma
                                    size_t T) {
     std::vector<double> res(T);
     for (size_t t = 0; t < T; ++t) {
@@ -105,27 +107,21 @@ int main(int argc, const char * argv[]) {
     T = 10;
     K = 3;
     
-    std::vector<double> res(T);
-    std::vector<double> weights(K);
-    std::vector<double> means(K);
-    std::vector<double> variances(K);
+    double initArr_W[] = {0.2, 0.3, 0.5};
+    int    initArr_M[] = {1, 2, 3};
+    int    initArr_V[] = {4, 3, 2};
     
-    weights[0] = 0.2;
-    weights[1] = 0.3;
-    weights[2] = 0.5;
-    
-    means[0] = 1;
-    means[1] = 2;
-    means[2] = 5;
-    
-    variances[0] = 4;
-    variances[1] = 3;
-    variances[2] = 2;
+    std::vector<double> res(T);    
+    std::vector<double> weights(initArr_W, initArr_W + K);
+    std::vector<double> means(initArr_M, initArr_M + K);
+    std::vector<double> variances(initArr_V, initArr_V + K);
     
     res = sample_mixture(weights, means, variances, T);
     for (int i = 0; i < T; i++) {
         cout << res[i] << "\n";
     }
+    
+//    genSeqOfNormDistr();
     
     return 0;
 }
