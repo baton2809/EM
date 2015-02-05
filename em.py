@@ -58,8 +58,8 @@ def genData(mean, cov, dataSize):
 
     k = sample_cat()
 
-    x,y = np.random.multivariate_normal(mean[k], cov[k], dataSize).T
-    ndArray = np.array([[x[i],y[i]] for i in range(x.size)])
+    x, y = np.random.multivariate_normal(mean[k], cov[k], dataSize).T
+    ndArray = np.array([[x[i], y[i]] for i in range(x.size)])
     np.savetxt('data', ndArray)
     return ndArray
 
@@ -83,6 +83,7 @@ def gausDistr(x, mean, cov):
     :param cov: covariance
     :return: result of calculating the Gaussian distribution
     """
+    # surely we get sometimes an exception while calculating a determinator of the covariance matrix
     return (1 / (2 * np.pi) ** (mean.ndim / 2)) * (1 / np.linalg.det(cov) ** .5) * \
         np.exp(-0.5 * np.dot(np.dot(x - mean, np.linalg.inv(cov)), (x - mean)))
 
@@ -109,7 +110,24 @@ def respons():
 
 
 def reestimate():
-    print("do smt")
+    """
+    Re-estimate the parameters using the current responsibilities
+    :return:
+    """
+    Nk = np.zeros(K)
+    for i in range(K):
+        for j in range(N):
+            Nk[i] += gamma[j][i]
+
+    print(mean)                      # old mean
+    for k in range(K):
+        sum = 0
+        for n in range(N):
+            # print(ndArray[n])
+            # print(gamma[n][k])
+            sum += gamma[n][k] * ndArray[n]
+        mean[k] = sum / Nk[k]
+    print(mean)                      # new mean
 
 if __name__ == "__main__":
     pi, mean, cov = init()
@@ -119,6 +137,7 @@ if __name__ == "__main__":
 
     ndArray = genData(mean, cov, N)
     # print(ndArray)
-    plotData(ndArray)
+    # plotData(ndArray)
     gamma = respons()
-    print(gamma)
+    # print(gamma)
+    reestimate()        # print an old mean and a new one
