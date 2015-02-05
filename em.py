@@ -86,6 +86,28 @@ def gausDistr(x, mean, cov):
     return (1 / (2 * np.pi) ** (mean.ndim / 2)) * (1 / np.linalg.det(cov) ** .5) * \
         np.exp(-0.5 * np.dot(np.dot(x - mean, np.linalg.inv(cov)), (x - mean)))
 
+def respons():
+    """
+    Evaluate the responsibilities (E-step)
+    :return: array gamma[N][K]
+    """
+    gamma = np.zeros((N, K))
+
+    for n in range(N):
+        denominator = 0
+        for j in range(K):
+            denominator += pi[0][j] * gausDistr(ndArray[n], mean[j], cov[j])
+
+        # print(denominator)             # uncomment it and run some times
+
+        for k in range(K):
+            # print(gausDistr(ndArray[n], mean[k], cov[k]))  # uncomment it and run some times
+            numerator = pi[0][k] * gausDistr(ndArray[n], mean[k], cov[k])
+            gamma[n][k] = numerator / denominator
+
+    return gamma
+
+
 def reestimate():
     print("do smt")
 
@@ -98,6 +120,5 @@ if __name__ == "__main__":
     ndArray = genData(mean, cov, N)
     # print(ndArray)
     plotData(ndArray)
-
-
-
+    gamma = respons()
+    print(gamma)
