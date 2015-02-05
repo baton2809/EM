@@ -10,6 +10,9 @@ The program do:
 import numpy as np
 import bisect
 import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings('error')
 
 K = 2
 D = 2   # const!
@@ -130,14 +133,20 @@ def reestimate():
     print(mean)                      # new mean
 
 if __name__ == "__main__":
-    pi, mean, cov = init()
+    while True:
+        try:
+            pi, mean, cov = init()
 
-    cums = cumsum()
-    sample_cat()
+            cums = cumsum()
+            sample_cat()
 
-    ndArray = genData(mean, cov, N)
-    # print(ndArray)
-    # plotData(ndArray)
-    gamma = respons()
-    # print(gamma)
-    reestimate()        # print an old mean and a new one
+            ndArray = genData(mean, cov, N)
+            # print(ndArray)
+            # plotData(ndArray)
+            gamma = respons()
+            # print(gamma)
+            reestimate()        # print an old mean and a new one
+            print("Program completed successful!")
+            break
+        except Warning:
+            print("You're out of luck! Program try to generate parameters again")
