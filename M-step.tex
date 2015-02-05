@@ -1,0 +1,179 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,color}
+\usepackage[utf8]{inputenc}
+\title{The Gaussian distribution}
+\author{butapro7@gmail.com }
+\date{January 2015}
+\begin{document}
+
+\maketitle
+\section{M-step. Re-estimate the parameters using the current responsibilities}
+
+We shall call $\{{X,Z}\}$ the complete data set, and we shall refer to the actual observed data $X$ as incomplete.
+\begin{equation}
+p(x|\theta) = \sum\limits_{z} p(x, z|\theta) = \sum\limits_{z} p(z|x) p(x|\theta) = E[p(x|\theta)]
+\end{equation}
+
+\subsection{Optimization with respect to the mean}
+
+\begin{equation}
+    \begin{aligned}
+\frac{\partial}{\partial \mu_k}E[\log p(x|z;\theta] = & 
+\frac{\partial}{\partial \mu_k}\sum_{t=1}^T \sum_{k=1}^K
+E[z_{tk}]\{\log \pi_k + \log \mathcal{N}(x_t|\theta)\} \\ = &
+\sum_{t=1}^T E[z_{tk}] \frac{\partial}{\partial \mu_k} \log \mathcal{N}(x_t|\theta) \\ = & 
+\sum_{t=1}^T \gamma(z_{tk}) 
+\frac{\frac{\partial}{\partial \mu_k} \mathcal{N}(x_t|\theta)}
+{\mathcal{N}(x_t|\theta)} \\ = &  
+\sum_{t=1}^T \gamma(z_{tk}) 
+\frac
+{\frac{1}{(2\pi)^{\frac{D}{2}}} \frac{1}{\Sigma^{\frac{1}{2}}} e^{\{ -\frac{1}{2}(x_t-\mu_k)^T\Sigma^{-1}(x_t-\mu_k) \}}} 
+{\mathcal{N}(x_t|\theta)} \\ \ast &
+\frac{\partial}{\partial \mu_k} \{-\frac{1}{2}(x_t-\mu_k)^T\Sigma^{-1}(x_t-\mu_k) \} \\ = &
+\sum_{t=1}^T \gamma(z_{tk}) 
+\frac
+{\mathcal{N}(x_t|\theta)}
+{\mathcal{N}(x_t|\theta)}
+\Sigma^{-1}(x_t-\mu_k) \\ = & 
+\sum_{t=1}^T \gamma(z_{tk}) 
+\Sigma^{-1}(x_t-\mu_k) \\ = &  
+\sum_{t=1}^T \gamma(z_{tk}) 
+(x_t-\mu_k) = 0
+    \end{aligned}
+\end{equation}
+
+So, rearranging we obtain:
+\begin{equation}
+\mu_k = \frac{1}{N_k}\sum_{t=1}^T\gamma(z_{tk})x_t
+\end{equation}
+Where we have defined:
+\begin{equation}
+N_k = \sum_{t=1}^T\gamma(z_tk)
+\end{equation}
+
+
+\subsection{Optimization with respect to the sigma}
+
+First use logarithm to simplify the log-likelihood function 
+
+\begin{equation}
+\ln p(\vec{x}|\mu,\Sigma) = - \frac{ND}{2}\ln(2\pi) - \frac{N}{2}\ln |\Sigma| -\frac{1}{2}\sum_{n=1}^N(x_n - \mu)^T\Sigma^{-1}(x_n-\mu) 
+\end{equation}
+
+and next take the derivative of the log-likelihood function of the Gaussian mixture
+
+Next use the facts that
+
+\begin{equation}
+-\log|\Sigma| = \log|\Sigma^{-1}|
+\end{equation}
+
+\begin{equation}
+\frac{\partial}{\partial A}\log(A) = A^{-T}
+\end{equation}
+
+and
+
+\begin{equation}
+a^T A a = tr(a^T A a) = tr(a a^T A) 
+\end{equation}
+\begin{equation}
+\frac{\partial}{\partial A} tr(A B) = B^T 
+\end{equation}
+
+$\\$
+and differentiate $E[\log p(x|z;\theta]$ by $\Sigma^{-1}$
+
+\begin{equation}
+    \begin{aligned}
+\frac{\partial}{\partial \Sigma_k^{-1}} & E[\log p(x|z;\theta] =
+\frac{\partial}{\partial \Sigma_k^{-1}}\sum_{t=1}^T \sum_{k=1}^K
+E[z_{tk}]\{\log \pi_k + \log \mathcal{N}(x_t|\theta)\}
+\\ = & \sum_{t=1}^T E[z_{tk}] \frac{\partial}{\partial \Sigma_k^{-1}} \log \mathcal{N}(x_t|\theta)
+\\ = & \sum_{t=1}^T \gamma(z_{tk}) 
+\frac{\partial}{\partial \Sigma_k^{-1}} ( \frac{1}{2} \log |\Sigma_k^{-1}| - \frac{1}{2} tr [ (x_t - \mu_k^{new}) (x_t - \mu_k^{new})^T \Sigma_k^{-1} ])
+\\ = & \sum_{t=1}^T \gamma(z_{tk}) \frac{1}{2} \Sigma_k^T - \sum_{t=1}^T \gamma(z_{tk}) \frac{1}{2} (x_t - \mu_k^{new})^T (x_t - \mu_k^{new}) = 0
+    \end{aligned}
+\end{equation}
+
+\begin{equation}
+\Sigma_k^T = \frac{\sum_{t=1}^T \gamma(z_{tk}) (x_t - \mu_k^{new})^T (x_t - \mu_k^{new})}{\sum_{t=1}^T \gamma(z_{tk})}
+\end{equation}
+
+Totally
+
+\begin{equation}
+\Sigma_{ML} = \frac{1}{N_k}\sum_{t=1}^T \gamma(z_{tk}) (x_t - \mu_k^{new}) (x_t - \mu_k^{new})^T
+\end{equation}
+
+\subsection{Optimization with respect to the mixing coefficient}
+
+To find the derivative of the function with constraint $\sum_{k=1}^K\pi_k = 1$ we must use a Lagrangian multipliers
+
+\begin{equation}
+\begin{aligned}
+\frac{\partial}{\partial \pi_k}( E[\log p(x|z;\theta] + & \lambda(\sum_{j=1}^K \pi_j - 1)) \\ = & 
+\frac{\partial}{\partial \pi_k}\sum_{t=1}^T \sum_{k=1}^K
+E[z_{tk}]\{\log \pi_k + \log \mathcal{N}(x_t|\theta)\} + \frac{\partial}{\partial \pi_k}\lambda(\sum_{j=1}^K \pi_j - 1)
+\\ = &  
+\sum_{t=1}^T
+\gamma(z_{tk})\frac{\partial}{\partial \pi_k}\{\log \pi_k + \log \mathcal{N}(x_t|\theta)\} + \frac{\partial}{\partial \pi_k} \lambda(\sum_{j=1}^K \pi_j - 1)
+\\ = &
+\sum_{t=1}^T 
+\gamma(z_{tk})\frac{\partial}{\partial \pi_k}\{\log \pi_k\} + \frac{\partial}{\partial \pi_k} \lambda(\sum_{j=1}^K \pi_j - 1) 
+\\ = &
+\sum_{t=1}^T
+\gamma(z_{tk})\frac{1}{\pi_k} + \lambda 
+\\ = &
+\sum_{t=1}^T
+\frac{\mathcal{N}(x_t|\theta)}{\sum_{j=1}^K\pi_j\mathcal{N}(x_t|\theta_j)} + \lambda = 0
+\end{aligned}
+\end{equation}
+
+So, let us obtain the first equation by multiplying expression by $\pi_k$
+
+\begin{equation}
+\sum_{t=1}^T \gamma(z_{tk}) + \pi_k \lambda = 0
+\end{equation}
+
+Sum over k make the second equation
+
+\begin{equation}
+\sum_{t=1}^T \sum_{k=1}^K \gamma(z_{tk}) + \sum_{k=1}^K \pi_k \lambda = 0
+\end{equation}
+
+Using 
+
+\begin{equation}
+\sum_{k=1}^K \gamma(z_{tk}) = 1
+\end{equation}
+
+and
+
+\begin{equation}
+\sum_{k=1}^K \pi_k = 1
+\end{equation}
+
+we obtain from the second equation (17)
+
+\begin{equation}
+T + \lambda = 0
+\end{equation}
+
+\begin{equation}
+\lambda = -T
+\end{equation}
+
+Next, substitute $\lambda$ in the first equation (16)
+
+\begin{equation}
+\pi_k = - \frac{\sum_{t=1}^T\gamma(z_{tk})}{\lambda} = \frac{N_k}{T}
+\end{equation}
+
+Finally
+
+\begin{equation}
+\pi_{ML} = \frac{N_k}{T}
+\end{equation}
+
+\end{document}
