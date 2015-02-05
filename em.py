@@ -146,7 +146,6 @@ if __name__ == "__main__":
             gamma = respons()
             # print(gamma)
             reestimate()        # print an old mean and a new one
-            print("Program completed successful!")
             break
         except Warning:
-            print("You're out of luck! Program try to generate parameters again")
+            pass
