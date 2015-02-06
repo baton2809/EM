@@ -35,7 +35,7 @@ def cumsum():
     Preprocess a cumulative sum
     :return: ndArray of the cumulative sum
     """
-    cums = pi
+    cums = pi.copy()    # to resolve a problem of "if cums changes, pi will also change"
     for i in range(1, pi.size):
         cums[0][i] += cums[0][i - 1]
     return cums
@@ -122,7 +122,7 @@ def reestimate():
         for j in range(N):
             Nk[i] += gamma[j][i]
 
-    print(mean)                      # old mean
+    print(mean)                                               # old mean
     for k in range(K):
         sum = 0
         for n in range(N):
@@ -130,22 +130,39 @@ def reestimate():
             # print(gamma[n][k])
             sum += gamma[n][k] * ndArray[n]
         mean[k] = sum / Nk[k]
-    print(mean)                      # new mean
+    print('{}\n---------------------------' . format(mean))   # new mean
+
+    print(cov)                                                # old cov
+    sum = range(K)
+    for k in range(K):
+        sum[k] = np.zeros((K, K))
+
+    for k in range(K):
+        for n in range(N):
+            sum[k] += np.array(gamma[n][k] * np.matrix(ndArray[n] - mean[k]) * np.matrix(ndArray[n] - mean[k]).T)
+        cov[k] = sum[k] / Nk[k]
+    print('{}\n---------------------------' . format(cov))    # new cov
+
+    print(pi)                                                 # old mixing coefficient
+    for k in range(K):
+        pi[0][k] = Nk[k] / N
+    print('{}\n---------------------------' . format(pi))     # new mixing coefficient
+
 
 if __name__ == "__main__":
     while True:
         try:
             pi, mean, cov = init()
-
             cums = cumsum()
             sample_cat()
 
             ndArray = genData(mean, cov, N)
             # print(ndArray)
-            # plotData(ndArray)
+
             gamma = respons()
+            plotData(ndArray)
             # print(gamma)
-            reestimate()        # print an old mean and a new one
+            reestimate()                                      # print an old mean and a new one
             break
         except Warning:
             pass
