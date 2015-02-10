@@ -26,8 +26,7 @@ def init():
     :return: arrays of pi(s), means and covariances
     """
     pi = np.random.dirichlet(np.ones(K), size=None)    # sum(pi) = 1 - properties of dirichlet
-    mean = np.random.rand(K, D)
-    cov = []
+    mean, cov = np.random.rand(K, D), []
     for k in range(K):
         cov.append(np.random.rand(D, D))
         cov[k] = cov[k].dot(cov[k].T)
@@ -40,7 +39,6 @@ def sample_cat():
     """
     return bisect.bisect_right(cs, np.random.rand())
 
-# whether it is possible to simplify ???
 def genData():
     """
     Generate D-dimensional array of points of Gaussian mixture
@@ -49,6 +47,7 @@ def genData():
 
     :return: array of points
     """
+    # whether it is possible to simplify ???
     lx, ly = [], []
     for i in range(N):
         k = sample_cat()
@@ -65,8 +64,8 @@ def plotData(ndArray):
     :param ndArray: array of points
     :return:
     """
-    x = [[ndArray[i][0]] for i in range(ndArray.shape[0])]
-    y = [[ndArray[i][1]] for i in range(ndArray.shape[0])]
+    x = [[ndArray[i][0]] for i in range(N)]
+    y = [[ndArray[i][1]] for i in range(N)]
     plt.plot(x, y, 'x')
     plt.axis('equal')
     plt.show()
@@ -79,7 +78,6 @@ def gausDistr(x, mean, cov):
     :param cov: covariance
     :return: result of calculating the Gaussian distribution
     """
-    # return multivariate_normal.pdf(x, mean, cov)
     return (1 / (2 * np.pi) ** (mean.ndim / 2)) * (1 / np.linalg.det(cov) ** .5) * \
         np.exp(-0.5 * np.dot(np.dot(x - mean, np.linalg.inv(cov)), (x - mean)))
 
@@ -90,17 +88,15 @@ def respons():
     """
     gamma = np.zeros((N, K))
 
+    # I have uninstall SciPy package from my ide in chance. :(
+    # But it is impossible to install this one in the Project Interpreter for some reason.
+    # This replacement doesn't work: multivariate_normal.pdf(ndArray[n], mean[j], cov[j])
+
     for n in range(N):
-        denominator = 0
-        for j in range(K):
-            denominator += pi[j] * gausDistr(ndArray[n], mean[j], cov[j])   # can be simplified?
-
         for k in range(K):
-            numerator = pi[k] * gausDistr(ndArray[n], mean[k], cov[k])
-            gamma[n][k] = numerator / denominator
-
+            gamma[n][k] = pi[k] * gausDistr(ndArray[n], mean[k], cov[k]) / \
+                          np.sum([pi[j] * gausDistr(ndArray[n], mean[j], cov[j]) for j in range(K)])
     return gamma
-
 
 def reestimate():
     """
@@ -108,28 +104,19 @@ def reestimate():
     :return:
     """
 
-    Nk = gamma.sum(axis=1)
+    Nk = gamma.sum(axis=0)
 
-    # print(mean)                                               # old mean
-    for k in range(K):
-        sum = gamma[:, k].dot(ndArray)
-        mean[k] = sum / Nk[k]
-    # print('{}\n---------------------------' . format(mean))   # new mean
+    print('mean:\n{}\ncov:\n{}\npi:\n{}\n' . format(mean, cov, pi))
 
-    # print(cov)                                                # old cov
-    sum = np.zeros((K, K, K))
     for k in range(K):
-        # print(gamma[:, k].dot(ndArray[:] - mean[k])) # 2x1
-        # print((ndArray[:] - mean[k]).T.dot(ndArray[:] - mean[k])) # 2x2
-        for n in range(N):
-            sum[k] += gamma[n][k] * np.matrix(ndArray[n] - mean[k]) * np.matrix(ndArray[n] - mean[k]).T
-        cov[k] = sum[k] / Nk[k]
-    # print('{}\n---------------------------' . format(cov))    # new cov
+        mean[k] = np.dot(gamma.T[k], ndArray) / Nk[k]
 
-    # print(pi)                                                 # old mixing coefficient
-    for k in range(K):
+        mu_k = mean[k, np.newaxis]
+        cov[k] = np.dot(gamma.T[k] * ndArray.T, ndArray) - np.dot(mu_k, mu_k.T)
+
         pi[k] = Nk[k] / N
-    # print('{}\n---------------------------' . format(pi))     # new mixing coefficient
+
+    print('mean:\n{}\ncov:\n{}\npi:\n{}\n' . format(mean, cov, pi))
 
 if __name__ == "__main__":
     # print(scipy.version.full_version)
@@ -142,7 +129,7 @@ if __name__ == "__main__":
             ndArray = genData()
             gamma = respons()
             # plotData(ndArray)                                 # doesn't work in miniconda python 3
-            reestimate()                                      # print an old mean and a new one
+            # reestimate()
             break
         except Warning:
             pass
