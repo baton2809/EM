@@ -12,6 +12,7 @@ import bisect
 import matplotlib.pyplot as plt
 import warnings
 import scipy
+from scipy.misc import logsumexp
 # from scipy.stats import multivariate_normal
 
 warnings.filterwarnings('error')
@@ -54,9 +55,12 @@ def genData():
         x, y = np.random.multivariate_normal(mean[k], cov[k], 1).T
         lx.append(x.item(0)), ly.append(y.item(0))
     x, y = np.array(lx), np.array(ly)
-    ndArray = np.array([[x[i], y[i]] for i in range(x.size)])
-    np.savetxt('data', ndArray)
-    return ndArray
+    X = np.array([[x[i], y[i]] for i in range(x.size)])
+    np.savetxt('data', X)
+
+    a = np.max(X)
+
+    return X
 
 def plotData(ndArray):
     """
@@ -70,7 +74,7 @@ def plotData(ndArray):
     plt.axis('equal')
     plt.show()
 
-def gausDistr(x, mean, cov):
+def gausDistr(X, mean, cov):
     """
     Usage: gaussian(X[t], mean[k], cov[k])
     :param x: point in D-dimensional space
@@ -79,7 +83,7 @@ def gausDistr(x, mean, cov):
     :return: result of calculating the Gaussian distribution
     """
     return (1 / (2 * np.pi) ** (mean.ndim / 2)) * (1 / np.linalg.det(cov) ** .5) * \
-        np.exp(-0.5 * np.dot(np.dot(x - mean, np.linalg.inv(cov)), (x - mean)))
+        np.exp(-0.5 * np.dot(np.dot(X - mean, np.linalg.inv(cov)), (X - mean)))
 
 def respons():
     """
@@ -90,17 +94,18 @@ def respons():
 
     # I have uninstall SciPy package from my ide in chance. :(
     # But it is impossible to install this one in the Project Interpreter for some reason.
-    # This replacement doesn't work: multivariate_normal.pdf(ndArray[n], mean[j], cov[j])
+    # This replacement doesn't work: multivariate_normal.pdf(X[n], mean[j], cov[j])
 
     for n in range(N):
         for k in range(K):
-            gamma[n][k] = pi[k] * gausDistr(ndArray[n], mean[k], cov[k]) / \
-                          np.sum([pi[j] * gausDistr(ndArray[n], mean[j], cov[j]) for j in range(K)])
+            gamma[n][k] = pi[k] * gausDistr(X[n], mean[k], cov[k]) / \
+                          np.sum([pi[j] * gausDistr(X[n], mean[j], cov[j]) for j in range(K)])
+
     return gamma
 
 def reestimate():
     """
-    Re-estimate the parameters using the current responsibilities
+    Re-estimate the parameters using the current responsibilities (M-step)
     :return:
     """
 
@@ -109,27 +114,53 @@ def reestimate():
     print('mean:\n{}\ncov:\n{}\npi:\n{}\n' . format(mean, cov, pi))
 
     for k in range(K):
-        mean[k] = np.dot(gamma.T[k], ndArray) / Nk[k]
+        mean[k] = np.dot(gamma.T[k], X) / Nk[k]
 
         mu_k = mean[k, np.newaxis]
-        cov[k] = np.dot(gamma.T[k] * ndArray.T, ndArray) - np.dot(mu_k, mu_k.T)
+        cov[k] = np.dot(gamma.T[k] * X.T, X) - np.dot(mu_k, mu_k.T)
 
         pi[k] = Nk[k] / N
 
-    print('mean:\n{}\ncov:\n{}\npi:\n{}\n' . format(mean, cov, pi))
+    # print('mean:\n{}\ncov:\n{}\npi:\n{}\n' . format(mean, cov, pi))
+
+def likelihood():
+    """
+    Evaluate the log likelihood function
+    gmd is a Gaussian mixture distribution - p(X)
+    :return: log likelihood value
+    """
+    gmd = np.zeros(N)
+
+    for n in range(N):
+        gmd = np.sum(pi[k] * gausDistr(X[n], mean[k], cov[k]) for k in range(K))
+
+    return np.sum(np.log(gmd))
 
 if __name__ == "__main__":
     # print(scipy.version.full_version)
     while True:
         try:
+            tol = 10**-5    # convergence criteria
             pi, mean, cov = init()
             cs = (np.array(pi)).cumsum()
-            # print('{}\n{}'.format(cs, pi))
             sample_cat()
-            ndArray = genData()
-            gamma = respons()
-            # plotData(ndArray)                                 # doesn't work in miniconda python 3
-            # reestimate()
+            X = genData()
+            l_new = likelihood()
+            iter = 0
+            while True:
+                iter += 1
+                gamma = respons()
+                # plotData(X)   # doesn't work in miniconda python 3
+                reestimate()
+                l_old = likelihood()
+                print('log likelihood\nold: {}\nnew: {}\n'.format(l_old, l_new))
+                if np.absolute(l_new/l_old - 1) < tol:
+                    break
+                else:
+                    l_new = l_old
+
+            print "Iteration was made before convergence: ", iter
+
             break
         except Warning:
             pass
