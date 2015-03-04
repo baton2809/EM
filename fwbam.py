@@ -14,7 +14,7 @@ reads_in_chr = len(lst)
 lengths_chr_list = samfile.lengths
 k = 100000
 
-bin = [0] * (lengths_chr_list[0] / k)
+bin = [0] * int(math.ceil(lengths_chr_list[0] / k) + 1)
 amount_of_bins = len(bin)
 
 def count_reads_naive_loop(N):
@@ -62,14 +62,28 @@ def explanation_test():
     # starting in the i-bin, and ending in (i+1)-bin
     # but what length to take?
 
+def coverage_vector():
+    count = 0
+    for read in samfile.fetch('chr1', 0, lengths_chr_list[0]):
+        bin[int(math.ceil(read.reference_start / k))] += 1
+
+    for i in range(len(bin)):
+        count += bin[i]
+    print('\n            reads: {}\nsum reads in bins: {}\n'.format(reads_in_chr, count))
+    print("coverage vector:\n{}\n".format(bin))
+
+
 if __name__ == "__main__":
 
     start = time.time()
 
-    print('length: {}\n reads: {}\n  bins: {}\n'.format(lengths_chr_list[0], reads_in_chr, amount_of_bins))
+    print('statistics:\n    length: {}\n     reads: {}\n      bins: {}\n'
+          .format(lengths_chr_list[0], reads_in_chr, amount_of_bins))
     # naive_loop(100000)
-    count_reads_quick_loop()
-    explanation_test()
+    #count_reads_quick_loop()
+    #explanation_test()
+    coverage_vector()
+
 
     end = time.time()
     print('time: {} sec'.format(round((end - start), 2)))
