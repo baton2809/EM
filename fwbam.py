@@ -5,7 +5,7 @@ import pysam
 import math
 import numpy as np
 
-samfile = pysam.AlignmentFile("ex40.7.sorted.bam", "rb")
+samfile = pysam.AlignmentFile("ENCFF000TJP.sorted.bam", "rb")
 lengths_chr_list = samfile.lengths
 k = 100000
 
@@ -16,6 +16,11 @@ def coverage_vector(name, order):
         bin[int(math.ceil(read.reference_start / k))] += 1
     for i in range(len(bin)):
         count += bin[i]
+
+    if order == 21: # use for example to find estimation
+        np.savetxt('covvec', bin)   # next use em_poisson_mix.py
+
+    # print(len(bin))
     print("reference name: %s\n" % name)
     print('was reads: {}\ngot reads: {}\n'.format(samfile.count(samfile.references[order]), count))
     print("coverage vector:\n{}\n".format(bin))
