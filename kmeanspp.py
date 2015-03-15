@@ -6,7 +6,7 @@ from statistics import *
 
 if __name__ == "__main__":
     kmeans = KMeans(n_clusters=2, init='k-means++')
-    x = np.loadtxt("covvec")
+    x = np.loadtxt("covvec", dtype=int)
     kmeans.fit(x.reshape(-1, 1))    # one-dimensional
 
     # x0, x1 = [], []
