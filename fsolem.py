@@ -82,13 +82,14 @@ def loglikelihood():
     acc = logsumexp(lpr, axis=1)
     return acc.sum()
 
-def e_step():
+def e_step(gamma):
     for k in range(K):
         gamma[:, k] = np.log(pi[k]) + poisson.logpmf(x, lambda_parameter[k])
 
-    der = logsumexp(gamma, axis=1)
-    for k in range(K):
-        gamma[:, k] = gamma[:, k] - der
+    # der = logsumexp(gamma, axis=1)
+    # for k in range(K):
+    #     gamma[:, k] = gamma[:, k] - der
+    gamma -= logsumexp(gamma, axis=1)[:, np.newaxis]
 
     np.exp(gamma, gamma)
 
@@ -150,7 +151,7 @@ if __name__ == "__main__":
         print("gamma stats: (not 1 / 1)")
         while True:
             iter += 1
-            gamma = e_step()
+            gamma = e_step(gamma)
             lambda_parameter, pi = m_step()
             ll_old = loglikelihood()
             if np.absolute(ll_new / ll_old - 1) < tolerance:
