@@ -10,14 +10,10 @@ import glob
 import time
 import warnings
 from sklearn.cluster import KMeans
-warnings.filterwarnings("error")
-
-GAMMA_FILE = './data/gamma/gamma20'
-LAMBDA_FILE = './data/lambda/lambda20'
-PI_FILE = './data/pi/pi20'
+# warnings.filterwarnings("error")
 
 tolerance = 10**-3
-epsilon = 1.0**-7
+epsilon = 10**-12
 iter = -1
 
 def forward_backward():
@@ -30,6 +26,14 @@ def forward_backward():
         beta[i, ] = logsumexp(beta[i+1, ] + np.log(A.T) + pois[i+1, ], axis=1)
 
     return alpha, beta  # actually it is log alpha and log beta
+
+def check_gamma():
+    """
+    For debugging
+    :return: True if each summation over states for gamma get 1.
+    """
+    t = gamma.sum(axis=1)
+    print("gamma criteria is ", np.size(t[np.abs(t - 1.) > epsilon]) == 0)
 
 def e_step(log_alpha, log_beta):
     gamma = log_alpha + log_beta
@@ -44,13 +48,16 @@ def e_step(log_alpha, log_beta):
                                log_beta[t, j])
 
         xi[t] -= logsumexp(xi[t])
-    np.exp(xi[1:], xi[1:])
-    return gamma, xi
+    # np.exp(xi[1:], xi[1:])
+    return gamma, xi    # xi - is actually log_xi
 
 def baum_welch(gamma, xi):
     pi[:] = gamma[0, :].copy()  # copy slice
-    A = np.sum(xi[1:, ], axis=0)
-    A /= A.sum(axis=1)[np.newaxis].T
+    A = logsumexp(xi[1:, ], axis=0)
+    A -= logsumexp(A, axis=1)[np.newaxis].T
+    np.exp(A, A)
+    # A = np.sum(xi[1:, ], axis=0)
+    # A /= A.sum(axis=1)[np.newaxis].T
     Nk = np.sum(gamma, axis=0)
     for k in range(K):
         lambda_parameter[k] = np.dot(gamma.T[k], x) / Nk[k]
@@ -99,7 +106,7 @@ if __name__ == "__main__":
     start = time.time()
 
     K = 2
-    x = np.loadtxt("covvec", dtype=int)     # 20 bin
+    x = np.loadtxt("covvec20", dtype=int)     # 20 bin
     N = len(x)
     pois = np.zeros((N, K))
     alpha = np.zeros((N, K))
@@ -117,7 +124,11 @@ if __name__ == "__main__":
         iter += 1
         print("step: {}".format(iter))
         gamma, xi = e_step(alpha, beta)  # new <- alpha_old
+
+        check_gamma()
         pi, A, lambda_parameter = baum_welch(gamma, xi)  # new
+        print("A.sum(axis=1) get : ", A.sum(axis=1))
+        print("pi.sum() get : ", pi.sum())
         pois = poissons(K)  # <- lambda_new
         alpha, beta = forward_backward()  # new
         ll_new = ll()
@@ -131,22 +142,86 @@ if __name__ == "__main__":
     end = time.time()
     print('Iteration was made before convergence: {}\ntime : {} sec'.format(iter, round(end-start, 2)))
     print('convergences: {}\n              {}'.format(ll_old, ll_new))
-    print(A)
+    print("A.sum(axis=1) get : ", A.sum(axis=1))
     print(lambda_parameter)
-    print(pi)
+    print("pi.sum() get : ", pi.sum())
 
 
 
 # ========================================= #
-
+# # covvec20
 # step: 0
-# old: -414746.69618496817
-# new: -358278.61531018716
+# True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.00000000002
+# old: -414746.69635317405
+# new: -358278.6153405261
 # step: 1
-# old: -358278.61531018716
-# new: -355842.9847561983
+# True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.00000000003
+# old: -358278.6153405261
+# new: -355842.9848058823
 # step: 2
+# True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  0.999999999987
 # Iteration was made before convergence: 2
-# time : 101.1 sec
-# convergences: -355842.9847561983
-#               -360396.534245229         <--- bother me
+# time : 110.01 sec
+# convergences: -355842.9848058823
+#               -360396.5343190091
+# A.sum(axis=1) get :  [ 1.  1.]
+# [ 0.40685958  3.27053648]
+# pi.sum() get :  0.999999999987
+
+
+# # covvec15
+# step: 0
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# old: -1257554.5380569273
+# new: -939774.5100641939
+# step: 1
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# old: -939774.5100641939
+# new: -939107.8801286012
+# step: 2
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# /Users/artiom/PycharmProjects/em-mixture/thesis/hmm.py:20: RuntimeWarning: divide by zero encountered in log
+#   alpha[0, :] = np.log(pi) + pois[0, ]  # basis
+# old: -939107.8801286012
+# new: -939034.5526369443
+# step: 3
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# old: -939034.5526369443
+# new: -939032.1907665791
+# step: 4
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# old: -939032.1907665791
+# new: -939032.1017008605
+# step: 5
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# old: -939032.1017008605
+# new: -939032.0983463117
+# step: 6
+# gamma criteria is  True
+# A.sum(axis=1) get :  [ 1.  1.]
+# pi.sum() get :  1.0
+# Iteration was made before convergence: 6
+# time : 428.78 sec
+# convergences: -939032.0983463117
+#               -939032.0981913857
+# A.sum(axis=1) get :  [ 1.  1.]
+# [   1.66240934  219.86058331]
+# pi.sum() get :  1.0
