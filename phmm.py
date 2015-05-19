@@ -81,16 +81,18 @@ class MultiPoissonHMM(PoissonHMM):
 
     def _compute_log_likelihood(self, obs):
 
-        # pois = 0
-        # for t in range(len(obs)):
-        #     for i in range(2):
-        #         for d in range(2):
-        #             for s in range(2):
-        #                 if D[d, i] == s:
-        #                     pois[t, i] = poisson.logpmf(obs[t, d], self.rates_[d, s])
+        pois = np.zeros((len(obs), self.n_components))
+        for i in range(self.n_components):
+            for d in range(self.n_components / 2):
+                for c in range(self.n_components):
+                    if D[d, i] == c:
+                        pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[d, c])  # dot?
 
-
-        pass
+        n_samples = len(obs)
+        log_prob = np.empty((n_samples, self.n_components))
+        for c, rate in enumerate(self._rates):
+            log_prob[:, c] = pois
+        return log_prob
 
     def _accumulate_sufficient_statistics(self, stats, obs, framelogprob,
                                           posteriors, fwdlattice, bwdlattice,
@@ -100,9 +102,9 @@ class MultiPoissonHMM(PoissonHMM):
             params)
 
         if 'r' in params:
-            for i in range(4):
-                for d in range(2):
-                    for c in range(4):
+            for i in range(self.n_components):
+                for d in range(self.n_components / 2):
+                    for c in range(self.n_components):
                         if D[d, i] == c:                            # так ли?
                             stats['post', i] += posteriors[:, i]
 
@@ -134,21 +136,6 @@ if __name__ == "__main__":
     D = np.array([[0, 1, 0, 1],
                   [2, 3, 3, 2]])    # 0 - есть сигнал, 1 - нет сигнала
 
-    # print(rates_concat)
-
     hmmMult = MultiPoissonHMM(n_components=4)
     x_2dim = np.array([x, x]).T
     # hmmMult.fit([x_2dim])
-
-    # l = [5 - i for i in range(6)]
-    # print(l)
-    # for order, val in enumerate(l):
-    #      print(order, val, order * val)
-
-
-
-
-# [ 0.24665324  2.41596996]
-# [  1.00000000e+00   2.27909560e-16]
-# [[ 0.94336548  0.05663452]
-#  [ 0.07618314  0.92381686]]
