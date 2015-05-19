@@ -74,7 +74,7 @@ class MultiPoissonHMM(PoissonHMM):
     D_ = property(_get_D, _set_D)
 
     def _init(self, obs, params='str'):
-        super(MultiPoissonHMM)._init(obs, params='str')
+        super(PoissonHMM, self)._init(obs, params='str')
 
         self._D = [[0, 1, 0, 1], [2, 3, 3, 2]]
 
@@ -83,10 +83,11 @@ class MultiPoissonHMM(PoissonHMM):
 
         pois = np.zeros((len(obs), self.n_components))
         for i in range(self.n_components):
-            for d in range(self.n_components / 2):
+            for d in range(int(self.n_components / 2)):
                 for c in range(self.n_components):
                     if D[d, i] == c:
                         pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[d, c])  # dot?
+                        #  AttributeError: 'MultiPoissonHMM' object has no attribute '_rates'
 
         n_samples = len(obs)
         log_prob = np.empty((n_samples, self.n_components))
@@ -103,7 +104,7 @@ class MultiPoissonHMM(PoissonHMM):
 
         if 'r' in params:
             for i in range(self.n_components):
-                for d in range(self.n_components / 2):
+                for d in range(int(self.n_components / 2)):
                     for c in range(self.n_components):
                         if D[d, i] == c:                            # так ли?
                             stats['post', i] += posteriors[:, i]
@@ -138,4 +139,4 @@ if __name__ == "__main__":
 
     hmmMult = MultiPoissonHMM(n_components=4)
     x_2dim = np.array([x, x]).T
-    # hmmMult.fit([x_2dim])
+    hmmMult.fit([x_2dim])
