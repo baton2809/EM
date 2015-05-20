@@ -3,6 +3,7 @@ import numpy as np
 from hmmlearn.base import _BaseHMM
 from scipy.stats import poisson
 from sklearn import cluster
+import math
 import string
 
 class PoissonHMM(_BaseHMM):
@@ -64,6 +65,20 @@ class PoissonHMM(_BaseHMM):
 
 class MultiPoissonHMM(PoissonHMM):
 
+    # def __init__(self, n_components):
+        # super(MultiPoissonHMM, self).__init__(n_components)
+        # PoissonHMM.__init__(self, n_components)
+
+    # def _get_rates(self):
+    #     """Emission rate for each state."""
+    #     return PoissonHMM._rates(self)
+    #
+    # def _set_rates(self, rates):
+    #     rates = np.asarray(rates)
+    #     self._rates = rates.copy()
+    #
+    # rates_ = property(PoissonHMM._get_rates, PoissonHMM._set_rates)
+
     def _get_D(self):
         return self._D
 
@@ -81,9 +96,9 @@ class MultiPoissonHMM(PoissonHMM):
 
     def _compute_log_likelihood(self, obs):
 
-        pois = np.zeros((len(obs), self.n_components))
+        pois = np.ones((len(obs), self.n_components))
         for i in range(self.n_components):
-            for d in range(int(self.n_components / 2)):
+            for d in range(int(self.n_components / math.sqrt(self.n_components))):
                 for c in range(self.n_components):
                     if D[d, i] == c:
                         pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[d, c])  # dot?
@@ -104,7 +119,7 @@ class MultiPoissonHMM(PoissonHMM):
 
         if 'r' in params:
             for i in range(self.n_components):
-                for d in range(int(self.n_components / 2)):
+                for d in range(int(self.n_components / math.sqrt(self.n_components))):
                     for c in range(self.n_components):
                         if D[d, i] == c:                            # так ли?
                             stats['post', i] += posteriors[:, i]
