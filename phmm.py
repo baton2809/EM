@@ -100,19 +100,9 @@ class MultiPoissonHMM(PoissonHMM):
             stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice,
             params)
 
-        # # переделать
-        # if 'r' in params:
-        #     for i in range(self.n_components):
-        #         for d in range(self.n_sample):
-        #             for c in range(self.n_components):
-        #                 if self._D[d, i] == c:
-        #                     stats['post'][i] += np.sum(posteriors[:, i], axis=0)
-        #
-        #     # stats['post'] += posteriors.sum(axis=0)
-        #     # ??? np.dot(posteriors.T, obs)
-        #     stats['obs'] += np.dot(stats['post'], obs)
-
-        pass
+        if 'r' in params:
+            stats['post'] += posteriors.sum(axis=0) * 2
+            stats['obs'] += np.dot(posteriors.T, obs.sum(axis=1))
 
     def _do_mstep(self, stats, params):
         super(PoissonHMM, self)._do_mstep(stats, params)
@@ -125,7 +115,14 @@ if __name__ == "__main__":
     # hmm = PoissonHMM(n_components=2)
     # hmm.fit(obs=[x])
     # print(hmm.predict(x))
+    # print(hmm.rates_)
+    # print(hmm.transmat_)
+    # print(hmm.startprob_)
 
     hmmMult = MultiPoissonHMM(n_components=4)
     x_2dim = np.array([x, x]).T
     hmmMult.fit([x_2dim])
+    print(hmmMult.predict(x_2dim))
+    print(hmmMult.rates_)
+    print(hmmMult.transmat_)
+    print(hmmMult.startprob_)
