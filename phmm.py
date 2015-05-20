@@ -32,13 +32,13 @@ class PoissonHMM(_BaseHMM):
         super(PoissonHMM, self)._init(obs, params=params)  # A и pi (для всей модели) -  2 x 2, 1 x 2
 
         concat_obs = np.concatenate(obs)
-
         if 'r' in params:
+            if self.n_components == 4:          # if 4 then .T, elif 2 then nothing
+                concat_obs = concat_obs.T
             kmeans = cluster.KMeans(n_clusters=self.n_components)
-            self._rates = (kmeans.fit(np.atleast_2d(concat_obs).T)
-                           .cluster_centers_.T[0])
+            self._rates = (kmeans.fit(np.atleast_2d(concat_obs).T)  # was np.atleast_2d(concat_obs).T
+                               .cluster_centers_.T[0])
             self._rates.sort()
-
 
     def _initialize_sufficient_statistics(self):
         stats = super(PoissonHMM, self)._initialize_sufficient_statistics()
@@ -65,19 +65,7 @@ class PoissonHMM(_BaseHMM):
 
 class MultiPoissonHMM(PoissonHMM):
 
-    # def __init__(self, n_components):
-        # super(MultiPoissonHMM, self).__init__(n_components)
-        # PoissonHMM.__init__(self, n_components)
-
-    # def _get_rates(self):
-    #     """Emission rate for each state."""
-    #     return PoissonHMM._rates(self)
-    #
-    # def _set_rates(self, rates):
-    #     rates = np.asarray(rates)
-    #     self._rates = rates.copy()
-    #
-    # rates_ = property(PoissonHMM._get_rates, PoissonHMM._set_rates)
+    n_sample = 2
 
     def _get_D(self):
         return self._D
@@ -89,25 +77,20 @@ class MultiPoissonHMM(PoissonHMM):
     D_ = property(_get_D, _set_D)
 
     def _init(self, obs, params='str'):
-        super(PoissonHMM, self)._init(obs, params='str')
+        super(MultiPoissonHMM, self)._init(obs, params='str')
 
-        self._D = [[0, 1, 0, 1], [2, 3, 3, 2]]
-
+        self._D = np.array([[0, 1, 0, 1], [2, 3, 3, 2]])
 
     def _compute_log_likelihood(self, obs):
 
         pois = np.ones((len(obs), self.n_components))
         for i in range(self.n_components):
-            for d in range(int(self.n_components / math.sqrt(self.n_components))):
+            for d in range(self.n_sample):
                 for c in range(self.n_components):
-                    if D[d, i] == c:
-                        pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[d, c])  # dot?
-                        #  AttributeError: 'MultiPoissonHMM' object has no attribute '_rates'
+                    if self._D[d, i] == c:
+                        pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[c])
 
-        n_samples = len(obs)
-        log_prob = np.empty((n_samples, self.n_components))
-        for c, rate in enumerate(self._rates):
-            log_prob[:, c] = pois
+        log_prob = pois
         return log_prob
 
     def _accumulate_sufficient_statistics(self, stats, obs, framelogprob,
@@ -117,15 +100,19 @@ class MultiPoissonHMM(PoissonHMM):
             stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice,
             params)
 
-        if 'r' in params:
-            for i in range(self.n_components):
-                for d in range(int(self.n_components / math.sqrt(self.n_components))):
-                    for c in range(self.n_components):
-                        if D[d, i] == c:                            # так ли?
-                            stats['post', i] += posteriors[:, i]
+        # # переделать
+        # if 'r' in params:
+        #     for i in range(self.n_components):
+        #         for d in range(self.n_sample):
+        #             for c in range(self.n_components):
+        #                 if self._D[d, i] == c:
+        #                     stats['post'][i] += np.sum(posteriors[:, i], axis=0)
+        #
+        #     # stats['post'] += posteriors.sum(axis=0)
+        #     # ??? np.dot(posteriors.T, obs)
+        #     stats['obs'] += np.dot(stats['post'], obs)
 
-            # stats['post'] += posteriors.sum(axis=0)
-            stats['obs'] += np.dot(posteriors.T, obs)
+        pass
 
     def _do_mstep(self, stats, params):
         super(PoissonHMM, self)._do_mstep(stats, params)
@@ -133,24 +120,11 @@ class MultiPoissonHMM(PoissonHMM):
         if 'r' in params:
             self._rates = stats['obs'] / stats["post"]
 
-
-
-
-
 if __name__ == "__main__":
     x = np.loadtxt("covvec20", dtype=int)
-    # hmm = PoissonHMM(n_components=2)  # 4
+    # hmm = PoissonHMM(n_components=2)
     # hmm.fit(obs=[x])
     # print(hmm.predict(x))
-
-    # rates_d1 = hmm.rates_.copy()
-    # rates_d2 = hmm.rates_.copy()  # but for another obs
-    # rates_concat = []
-    # rates_concat.extend(rates_d1)
-    # rates_concat.extend(rates_d2)
-
-    D = np.array([[0, 1, 0, 1],
-                  [2, 3, 3, 2]])    # 0 - есть сигнал, 1 - нет сигнала
 
     hmmMult = MultiPoissonHMM(n_components=4)
     x_2dim = np.array([x, x]).T
