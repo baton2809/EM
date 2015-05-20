@@ -77,7 +77,28 @@ class MultiPoissonHMM(PoissonHMM):
     D_ = property(_get_D, _set_D)
 
     def _init(self, obs, params='str'):
-        super(MultiPoissonHMM, self)._init(obs, params='str')
+        # super(MultiPoissonHMM, self)._init(obs, params='str')
+        super(PoissonHMM, self)._init(obs, params=params)
+        # судя по формулам должны вычисляться правильно.
+
+        # для каждого образца отдельно lambda
+        # сортируем, меньший - "-" , больший - "+"
+        # обьединяем.
+        # получаем 4x1 rates
+        concat_obs = np.concatenate(obs)
+        if 'r' in params:
+            kmeans = cluster.KMeans(n_clusters=int(self.n_components / 2))
+            r1 = (kmeans.fit(np.atleast_2d(concat_obs.T[0]).T)
+                  .cluster_centers_.T[0])
+            r2 = (kmeans.fit(np.atleast_2d(concat_obs.T[1]).T)
+                  .cluster_centers_.T[0])
+            r1.sort(), r2.sort()
+            r = []
+            r.extend(r1), r.extend(r2)
+            self._rates = r
+        # а тогда то ли находит при пересчете lambda.
+        # убедись на сентетическом примере
+        # перепроверить
 
         self._D = np.array([[0, 1, 0, 1], [2, 3, 3, 2]])
 
@@ -112,9 +133,17 @@ class MultiPoissonHMM(PoissonHMM):
 
 if __name__ == "__main__":
     x = np.loadtxt("covvec20", dtype=int)
+
     # hmm = PoissonHMM(n_components=2)
     # hmm.fit(obs=[x])
-    # print(hmm.predict(x))
+    # np.savetxt('y', hmm.predict(x))
+    # print(len(x))
+    # t = np.asarray(hmm.predict(x))
+    # print(len(t[t > 0.]))
+
+    # 240651
+    # 109987
+
     # print(hmm.rates_)
     # print(hmm.transmat_)
     # print(hmm.startprob_)
@@ -122,7 +151,11 @@ if __name__ == "__main__":
     hmmMult = MultiPoissonHMM(n_components=4)
     x_2dim = np.array([x, x]).T
     hmmMult.fit([x_2dim])
-    print(hmmMult.predict(x_2dim))
-    print(hmmMult.rates_)
-    print(hmmMult.transmat_)
-    print(hmmMult.startprob_)
+    t = hmmMult.predict(x_2dim)
+    print(len(t[t > 1.])) # т.к. 0 (- -) 1(+ +) - похожи; 2(- +) 3(+ -) - не похожи
+    # рез-т говорит, что непохожих нет, что правильно так как образцы полностью одинкаовые.
+
+    # np.savetxt('y', t)
+    # print(hmmMult.rates_)
+    # print(hmmMult.transmat_)
+    # print(hmmMult.startprob_)
