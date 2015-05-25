@@ -1,79 +1,41 @@
 __author__ = 'artiom'
 
+"""
+A Program calculates coverages vectors
+"""
+
 import time
 import pysam
 import math
 import numpy as np
+from itertools import count
 
-samfile = pysam.AlignmentFile("ex40.7.sorted.bam", "rb")    # a tiny file
-# samfile = pysam.AlignmentFile("ENCFF000TJP.sorted.bam", "rb")
-lengths_chr_list = samfile.lengths
-k = 100000
+import pyximport
+pyximport.install(setup_args={'include_dirs': np.get_include()})
 
-def coverage_vector(name, order):
-    bin = np.zeros((int(math.ceil(lengths_chr_list[order] / k) + 1)), dtype=int)
-    count = 0
-    for read in samfile.fetch(name):
-        bin[int(math.ceil(read.reference_start / k))] += 1
-    for i in range(len(bin)):
-        count += bin[i]
+from _speedups import compute_coverage
 
-    # ex40.7.sorted.bam
-    if order == 12: # use for example to find estimation
-        np.savetxt('covvec', bin, fmt='%i')   # next use em_poisson_mix.py
-
-    # # ENCFF000TJP.sorted.bam
-    # if order == 20: # use for example to find estimation
-    #     np.savetxt('covvec', bin, fmt='%i')   # next use em_poisson_mix.py
-
-    print("reference name: %s\n" % name)
-    print('was reads: {}\ngot reads: {}\n'.format(samfile.count(samfile.references[order]), count))
-    print("coverage vector:\n{}\n".format(bin))
+k = 200
 
 if __name__ == "__main__":
     start = time.time()
-    # print('statistics:\n    length: {}\n     reads: {}\n      bins: {}\n'
-    #       .format(lengths_chr_list[0], reads_in_chr, amount_of_bins))
-    order = 0
-    for name_reference in samfile.references:
-        coverage_vector(name_reference, order)
-        order += 1
+
+    for reference_name in pysam.AlignmentFile("ENCFF000TJK.sorted.bam", "rb").references:
+            # compute_coverage("ENCFF000TJP.sorted.bam", reference_name)
+            np.savetxt('../data/coverages/ENCFF000TJK__'+reference_name,
+                       compute_coverage("ENCFF000TJK.sorted.bam", reference_name), fmt='%i')
+
+
+    # files = ["ENCFF000TJP.sorted.bam", "ENCFF000TJR.sorted.bam"]
+    #
+    # sample_files = [pysam.AlignmentFile("ENCFF000TJP.sorted.bam", "rb"),
+    #                 pysam.AlignmentFile("ENCFF000TJR.sorted.bam", "rb")]
+    #
+    # for i in range(len(sample_files)):
+    #     for reference_name in sample_files[i].references:
+    #         # compute_coverage("ENCFF000TJP.sorted.bam", reference_name)
+    #         np.savetxt('../data/coverages/biologiсal_sample_'+reference_name+'_'+str(i),
+    #                    compute_coverage(files[i], reference_name), fmt='%i')
+
     end = time.time()
     print('time: {} sec'.format(round((end - start), 2)))
-
-samfile.close()
-
-# for pcolumn in samfile.pileup('chr1',10156,10157):
-#     print(pcolumn)
-# print(samfile.count('chr1',1000
-#  print(samfile.lengths)0,20000))
-
-# print([samfile.header['SQ'][i]['SN'] for i in range(len(samfile.header['SQ']))])
-
-# def reg2bin(beg, end):
-#     if (beg>>14 == end>>14) : return ((1<<15)-1)/7 + (beg>>14)
-#     if (beg>>17 == end>>17) : return ((1<<12)-1)/7 + (beg>>17)
-#     if (beg>>20 == end>>20) : return ((1<<9)-1)/7 + (beg>>20)
-#     if (beg>>23 == end>>23) : return ((1<<6)-1)/7 + (beg>>23)
-#     if (beg>>26 == end>>26) : return ((1<<3)-1)/7 + (beg>>26)
-#     return 0
-#
-
-# for refseqlength in [samfile.header['SQ'][i]['LN'] for i in range(len(samfile.header['SQ']))]:
-#     print(refseqlength)
-
-#     binnumbers = reg2bin(0, refseqlength - 1)
-#     print("reference sequence length: %d has %d bins" %
-#           (refseqlength, binnumbers))
-
-# for pileupcolumn in samfile.pileup('chr1',10155,10156):
-#     print ("at position %s starts %s reads" %
-#             (pileupcolumn.pos, pileupcolumn.n))
-#     print(pileupcolumn)
-
-
-#     for pileupread in pileupcolumn.pileups:
-#         print(pileupread.query_position)
-#         print ('\tbase in read %s = %s' %
-#                 (pileupread.alignment.query_name,
-#                  pileupread.alignment.query_sequence[pileupread.query_position]))

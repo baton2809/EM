@@ -1,6 +1,8 @@
+from collections import Counter
 from hmmlearn.hmm import GaussianHMM
 import numpy as np
 from hmmlearn.base import _BaseHMM
+from scipy.misc import logsumexp
 from scipy.stats import poisson
 from sklearn import cluster
 import math
@@ -63,9 +65,23 @@ class PoissonHMM(_BaseHMM):
         if 'r' in params:
             self._rates = stats['obs'] / stats["post"]
 
-class MultiPoissonHMM(PoissonHMM):
 
-    n_sample = 2
+class MultiPoissonHMM(_BaseHMM):
+    def __init__(self, *args, **kwargs):
+        self.use_null = kwargs.pop("use_null", False)
+        super(MultiPoissonHMM, self).__init__(*args, **kwargs)
+
+        self.n_components1d = int(np.sqrt(self.n_components))
+
+    def _get_rates(self):
+        """Emission rate for each state."""
+        return self._rates
+
+    def _set_rates(self, rates):
+        rates = np.asarray(rates)
+        self._rates = rates.copy()
+
+    rates_ = property(_get_rates, _set_rates)
 
     def _get_D(self):
         return self._D
@@ -77,85 +93,136 @@ class MultiPoissonHMM(PoissonHMM):
     D_ = property(_get_D, _set_D)
 
     def _init(self, obs, params='str'):
-        # super(MultiPoissonHMM, self)._init(obs, params='str')
-        super(PoissonHMM, self)._init(obs, params=params)
-        # судя по формулам должны вычисляться правильно.
+        super(MultiPoissonHMM, self)._init(obs, params=params)
 
-        # для каждого образца отдельно lambda
-        # сортируем, меньший - "-" , больший - "+"
-        # обьединяем.
-        # получаем 4x1 rates
         concat_obs = np.concatenate(obs)
-        if 'r' in params:
-            kmeans = cluster.KMeans(n_clusters=int(self.n_components / 2))
-            r1 = (kmeans.fit(np.atleast_2d(concat_obs.T[0]).T)
-                  .cluster_centers_.T[0])
-            r2 = (kmeans.fit(np.atleast_2d(concat_obs.T[1]).T)
-                  .cluster_centers_.T[0])
-            r1.sort(), r2.sort()
-            r = []
-            r.extend(r1), r.extend(r2)
-            self._rates = r
-        # а тогда то ли находит при пересчете lambda.
-        # убедись на сентетическом примере
-        # перепроверить
 
-        self._D = np.array([[0, 1, 0, 1], [2, 3, 3, 2]])
+        self.n_samples = len(concat_obs)
+        self.n_rates = self.n_components1d * self.n_samples
+
+        # self._D = np.array([[0, 1, 0, 1], [2, 3, 3, 2]])
+        # self._D = np.array([[0, 2, 1, 0, 1, 0, 2, 2, 1],
+        #                     [3, 5, 4, 4, 3, 5, 3, 4, 5]])
+        self._D = self._compute_D(self.n_samples)
+        print(self._D)
+
+        if 'r' in params:
+            rates = []
+            for d in range(self.n_samples):
+                v = concat_obs[d].mean()
+                c = 10
+                # kmeans = cluster.KMeans(n_clusters=self.n_components1d)
+                # r = (kmeans.fit(np.atleast_2d(concat_obs[d]).T)
+                #       .cluster_centers_.T[0])
+                # r.sort()
+                # if self.use_null:
+                #     r[1:] = r[:-1]
+                #     r[0] = 0
+                # r[-1] = r[-2] * 10
+                r = np.array([0, v/c, v*c])
+
+                rates.append(r)
+
+            self._rates = np.concatenate(rates)
+            print(self._rates)
+
+    def _compute_D(self, n_samples):
+        D = np.zeros((n_samples, self.n_components), dtype=int)
+        p = 0
+        for d in range(n_samples // 2):
+            D[d] = p, p+1, p+2, p, p, p+1, p+2, p+2, p+1
+            p += 3
+        for d in range(n_samples // 2, n_samples):
+            D[d] = p, p+1, p+2, p+2, p+1, p, p, p+1, p+2
+            p += 3
+
+        return D
 
     def _compute_log_likelihood(self, obs):
-
-        pois = np.ones((len(obs), self.n_components))
+        log_prob = np.zeros((obs.shape[1], self.n_components))
         for i in range(self.n_components):
-            for d in range(self.n_sample):
-                for c in range(self.n_components):
+            for d in range(self.n_samples):
+                for c in range(self.n_rates):
                     if self._D[d, i] == c:
-                        pois[:, i] *= poisson.logpmf(obs[:, d], self.rates_[c])
+                        work_buffer = poisson.logpmf(obs[d], self.rates_[c])
+                        log_prob[:, i] += np.where(np.isnan(work_buffer),
+                                                   np.log(obs[d] == 0),
+                                                   work_buffer)
 
-        log_prob = pois
         return log_prob
+
+    def _initialize_sufficient_statistics(self):
+        stats = super(MultiPoissonHMM, self)._initialize_sufficient_statistics()
+        stats['post'] = np.zeros(self.n_rates)
+        stats['obs'] = np.zeros(self.n_rates)
+        return stats
 
     def _accumulate_sufficient_statistics(self, stats, obs, framelogprob,
                                           posteriors, fwdlattice, bwdlattice,
                                           params):
-        super(PoissonHMM, self)._accumulate_sufficient_statistics(
+        super(MultiPoissonHMM, self)._accumulate_sufficient_statistics(
             stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice,
             params)
 
         if 'r' in params:
-            stats['post'] += posteriors.sum(axis=0) * 2
-            stats['obs'] += np.dot(posteriors.T, obs.sum(axis=1))
+            posteriors = posteriors.T.copy()
+            for c in range(self.n_rates):
+                for d in range(self.n_samples):
+                    for i in range(self.n_components):
+                        if self._D[d, i] == c:
+                            stats['post'][c] += posteriors[i].sum(axis=0)
+                            stats["obs"][c] += posteriors[i].dot(obs[d])
+
+            self.posteriors = posteriors.copy()
+
 
     def _do_mstep(self, stats, params):
-        super(PoissonHMM, self)._do_mstep(stats, params)
+        super(MultiPoissonHMM, self)._do_mstep(stats, params)
 
         if 'r' in params:
             self._rates = stats['obs'] / stats["post"]
+            print(self._rates)
+
+    def estimate_fdr(self, log_p0, mask):
+        res = log_p0.T * mask
+        res[res == 0] = -np.inf     # exp(f) get 0.0
+        acc = logsumexp(res)
+        count = mask.sum()
+        mFDR = np.exp(acc - np.log(count))
+        return mFDR
 
 if __name__ == "__main__":
-    x = np.loadtxt("covvec20", dtype=int)
-
-    # hmm = PoissonHMM(n_components=2)
-    # hmm.fit(obs=[x])
-    # np.savetxt('y', hmm.predict(x))
-    # print(len(x))
-    # t = np.asarray(hmm.predict(x))
-    # print(len(t[t > 0.]))
-
-    # 240651
-    # 109987
-
-    # print(hmm.rates_)
-    # print(hmm.transmat_)
-    # print(hmm.startprob_)
-
-    hmmMult = MultiPoissonHMM(n_components=4)
-    x_2dim = np.array([x, x]).T
+    # TJK, TJJ <=> TJP, TJR
+    x = np.loadtxt("../data/coverages/biologiсal_sample_chr1_0", dtype=int)
+    y = np.loadtxt("../data/coverages/ENCFF000TJJ__chr1", dtype=int)
+    # hmmMult = MultiPoissonHMM(n_components=4)
+    hmmMult = MultiPoissonHMM(n_components=9, use_null=True)
+    x_2dim = np.array([x, y])
     hmmMult.fit([x_2dim])
-    t = hmmMult.predict(x_2dim)
-    print(len(t[t > 1.])) # т.к. 0 (- -) 1(+ +) - похожи; 2(- +) 3(+ -) - не похожи
-    # рез-т говорит, что непохожих нет, что правильно так как образцы полностью одинкаовые.
+    t = hmmMult.predict(x_2dim, "map")
+    print(len(x) == len(y))
+    print(Counter(t))
+    # для n_components=9:
+    print("{0:.2f}%".format((1 - len(t[t > 2.]) / len(t)) * 100))  #  0 (- -) 1(+ +) - похожи; 2(- +) 3(+ -) - не похожи
+    # mFDR
+    # H0 - разницы нет. H1 - разница есть
+    # H0 отвергается, если p(++) + p(--) + p(nn) <= 0.5
+    log_p0 = np.log(hmmMult.posteriors[:, 0:2].sum(axis=1))  #   1 - (n,n) 2 - (+,+) 3 - (-,-)
+    mask = log_p0 <= np.log(.5)   # p0 - отвергается гипотеза "разницы нет"
+    print('mFDR =', hmmMult.estimate_fdr(log_p0, mask))
+    # !! mFDR = 2.4886891002e-06 это означает, что 3 раза мы соврали из 1246254.
 
-    # np.savetxt('y', t)
-    # print(hmmMult.rates_)
-    # print(hmmMult.transmat_)
-    # print(hmmMult.startprob_)
+    # для n_components=4:
+    # print("{0:.2f}%".format((1 - len(t[t > 1.]) / len(t)) * 100))
+
+    # control FDR
+    # alpha = 1e-06
+    # indices = hmmMult.posteriors[:, 0:2].sum(axis=1).argsort()
+    # for t in range(1, len(x)):
+    #     log_p0 = np.log(hmmMult.posteriors[indices[0:t], 0:2].sum(axis=1))
+    #     temp = hmmMult.estimate_fdr(log_p0, mask[0:t])  # mask ?
+    #     if temp > alpha:
+    #         break
+    #     else:
+    #         mFDR = temp
+    # print('controlled FDR ', t, len(x))
