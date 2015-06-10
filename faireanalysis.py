@@ -14,6 +14,7 @@ import numpy as np
 from scipy.stats import poisson
 from scipy.misc import logsumexp
 from hmmlearn.base import _BaseHMM
+from joblib import Parallel, delayed
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from _speedups import compute_coverage
@@ -155,6 +156,31 @@ class Writer(object):
                     bed_file.write('{0}\t{1}\t{2}\n'.format(chr, reference_start+k*s, reference_start+k*e))
                     e = s = -1
 
+def train(bam1, bam2, reference_name):
+    start = time.time()
+    print(reference_name)
+    x = Reader.stepwise_read_observations(bam1, reference_name)
+    y = Reader.stepwise_read_observations(bam2, reference_name)
+
+    hmmMult = MultiPoissonHMM(n_components=9, use_null=True)
+    x_2dim = np.array([x, y])
+
+    hmmMult.fit([x_2dim])
+
+    t = hmmMult.predict(x_2dim, 'map')
+
+    print('similarity: {0:.2f}%'.format((1 - len(t[t > 2.]) / len(t)) * 100))
+
+    start_position = list(pysam.AlignmentFile('../intermediate/'+bam1+'.sorted.bam').fetch(reference_name))[0].reference_start
+    Writer.save(t, reference_start=start_position, chr=reference_name)
+
+    log_p0 = np.log(hmmMult.posteriors[:, 0:2].sum(axis=1))
+    mask = log_p0 <= np.log(.5)
+    print('mFDR =', hmmMult.estimate_fdr(log_p0, mask))
+
+    end = time.time()
+    print('time for {0}: {1} sec'.format(reference_name, round((end - start), 2)))
+
 @click.command()
 @click.option('--bam1', prompt='1st bam file name',
               help='1st bam file name without extension .bam')
@@ -172,31 +198,10 @@ def faireanalysis(bam1, bam2, chr):
     else:
         reference_list = pysam.AlignmentFile(bam1 + '.sorted.bam', 'rb').references
 
-    start = time.time()
-    for reference_name in reference_list:
-        print(reference_name)
-        x = Reader.stepwise_read_observations(bam1, reference_name)
-        y = Reader.stepwise_read_observations(bam2, reference_name)
+    # for reference_name in reference_list:
+    #     train(reference_name, bam1, bam2)
 
-        hmmMult = MultiPoissonHMM(n_components=9, use_null=True)
-        x_2dim = np.array([x, y])
-
-        hmmMult.fit([x_2dim])
-
-        t = hmmMult.predict(x_2dim, 'map')
-
-        print('similarity: {0:.2f}%'.format((1 - len(t[t > 2.]) / len(t)) * 100))
-
-        start_position = list(pysam.AlignmentFile('../intermediate/'+bam1+'.sorted.bam').fetch(reference_name))[0].reference_start
-        Writer.save(t, reference_start=start_position, chr=reference_name)
-
-        log_p0 = np.log(hmmMult.posteriors[:, 0:2].sum(axis=1))
-        mask = log_p0 <= np.log(.5)
-        print('mFDR =', hmmMult.estimate_fdr(log_p0, mask))
-
-        end = time.time()
-        print('time for {0}: {1} sec'.format(reference_name, round((end - start), 2)))
-        start = end
+    Parallel(n_jobs=2, backend="multiprocessing")(delayed(train)(bam1, bam2, reference_name) for reference_name in reference_list)
 
 if __name__ == '__main__':
     faireanalysis()
