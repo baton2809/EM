@@ -1,21 +1,21 @@
 __author__ = 'artiom'
 
-import numpy as np
-from collections import Counter
-from hmmlearn.base import _BaseHMM
-from scipy.misc import logsumexp
-from scipy.stats import poisson
-import pysam
-import click
-from sklearn import cluster
+import time
 import math
 import string
-import time
-from itertools import count
 
+import click
+import pysam
 import pyximport
-pyximport.install(setup_args={'include_dirs': np.get_include()})
+from sklearn import cluster
+from itertools import count
+from collections import Counter
+import numpy as np
+from scipy.stats import poisson
+from scipy.misc import logsumexp
+from hmmlearn.base import _BaseHMM
 
+pyximport.install(setup_args={'include_dirs': np.get_include()})
 from _speedups import compute_coverage
 
 k = 200
@@ -25,34 +25,27 @@ k = 200
 #         np.savetxt('../data/coverages/' + bamfile + '__' + reference_name,
 #                    compute_coverage(bamfile + ".sorted.bam", reference_name), fmt='%i')
 
-def stepwise_read_observations(bamfile, reference_name):
-    return compute_coverage(bamfile + ".sorted.bam", reference_name)
+class Reader(object):
+    @staticmethod
+    def stepwise_read_observations(bamfile, reference_name):
+        return compute_coverage(bamfile + '.sorted.bam', reference_name)
 
 class MultiPoissonHMM(_BaseHMM):
     def __init__(self, *args, **kwargs):
-        self.use_null = kwargs.pop("use_null", False)
+        self.use_null = kwargs.pop('use_null', False)
         super(MultiPoissonHMM, self).__init__(*args, **kwargs)
 
         self.n_components1d = int(np.sqrt(self.n_components))
 
-    def _get_rates(self):
-        """Emission rate for each state."""
-        return self._rates
-
-    def _set_rates(self, rates):
-        rates = np.asarray(rates)
-        self._rates = rates.copy()
-
-    rates_ = property(_get_rates, _set_rates)
-
-    def _get_D(self):
-        return self._D
-
-    def _set_D(self, D):
-        D = np.asarray(D)
-        self._rates = D.copy()
-
-    D_ = property(_get_D, _set_D)
+    # def _get_rates(self):
+    #     """Emission rate for each state."""
+    #     return self._rates
+    #
+    # def _set_rates(self, rates):
+    #     rates = np.asarray(rates)
+    #     self._rates = rates.copy()
+    #
+    # rates_ = property(_get_rates, _set_rates)
 
     def _init(self, obs, params='str'):
         super(MultiPoissonHMM, self)._init(obs, params=params)
@@ -65,8 +58,7 @@ class MultiPoissonHMM(_BaseHMM):
         # self._D = np.array([[0, 1, 0, 1], [2, 3, 3, 2]])
         # self._D = np.array([[0, 2, 1, 0, 1, 0, 2, 2, 1],
         #                     [3, 5, 4, 4, 3, 5, 3, 4, 5]])
-        self._D = self._compute_D(self.n_samples)
-        # print(self._D)
+        self.D_ = self._compute_D(self.n_samples)
 
         if 'r' in params:
             rates = []
@@ -85,8 +77,7 @@ class MultiPoissonHMM(_BaseHMM):
 
                 rates.append(r)
 
-            self._rates = np.concatenate(rates)
-            # print(self._rates)
+            self.rates_ = np.concatenate(rates)
 
     def _compute_D(self, n_samples):
         D = np.zeros((n_samples, self.n_components), dtype=int)
@@ -105,12 +96,11 @@ class MultiPoissonHMM(_BaseHMM):
         for i in range(self.n_components):
             for d in range(self.n_samples):
                 for c in range(self.n_rates):
-                    if self._D[d, i] == c:
+                    if self.D_[d, i] == c:
                         work_buffer = poisson.logpmf(obs[d], self.rates_[c])
                         log_prob[:, i] += np.where(np.isnan(work_buffer),
                                                    np.log(obs[d] == 0),
                                                    work_buffer)
-
         return log_prob
 
     def _initialize_sufficient_statistics(self):
@@ -131,19 +121,17 @@ class MultiPoissonHMM(_BaseHMM):
             for c in range(self.n_rates):
                 for d in range(self.n_samples):
                     for i in range(self.n_components):
-                        if self._D[d, i] == c:
+                        if self.D_[d, i] == c:
                             stats['post'][c] += posteriors[i].sum(axis=0)
-                            stats["obs"][c] += posteriors[i].dot(obs[d])
+                            stats['obs'][c] += posteriors[i].dot(obs[d])
 
             self.posteriors = posteriors.copy()
-
 
     def _do_mstep(self, stats, params):
         super(MultiPoissonHMM, self)._do_mstep(stats, params)
 
         if 'r' in params:
-            self._rates = stats['obs'] / stats["post"]
-            # print(self._rates)
+            self.rates_ = stats['obs'] / stats['post']
 
     def estimate_fdr(self, log_p0, mask):
         res = log_p0.T * mask
@@ -153,46 +141,54 @@ class MultiPoissonHMM(_BaseHMM):
         mFDR = np.exp(acc - np.log(count))
         return mFDR
 
-def writer(pred, reference_start, chr):
-    with open('../intermediate/'+chr+'.bed', 'a') as bed_file:
-        pred = np.array(pred)
-        pred[pred <= 2] = 0
-        pred[pred > 2] = 1
-        e, s = -1, -1
-        l = []
-        for i in range(len(pred)):
-            if s == -1 and pred[i] == 1:
-                s = e = i
-            if pred[i] == 0 and e != -1:
-                e = i
-                l.append((s, e))
-                e = s = -1
-        for i in range(len(l)):
-            bed_file.write('{0}\t{1}\t{2}\n'.format(chr, reference_start+k*l[i][0], reference_start+k*l[i][1]))
+class Writer(object):
+    @staticmethod
+    def save(pred, reference_start, chr):
+        with open('../intermediate/'+chr+'.bed', 'a') as bed_file:
+            pred = (pred > 2).astype(int)
+            e = s = -1
+            for i in range(len(pred)):
+                if s == -1 and pred[i] == 1:
+                    s = e = i
+                if pred[i] == 0 and e != -1:
+                    e = i
+                    bed_file.write('{0}\t{1}\t{2}\n'.format(chr, reference_start+k*s, reference_start+k*e))
+                    e = s = -1
 
 @click.command()
 @click.option('--bam1', prompt='1st bam file name',
               help='1st bam file name without extension .bam')
 @click.option('--bam2', prompt='2nd bam file name',
               help='2nd bam file name without extension .bam')
-# @click.option('--chr', default=20, help='Number of chromatin.')
-def faireanalysis(bam1, bam2, chr=None):
+@click.option('--chr', default=None, help='Train specific chromatin(s).\n'
+                                          'Write chromatin names separated by commas without spaces\n'
+                                          'If none chromatin specifies the tool will analyze a whole file.\n'
+                                          'Example: --chr=chr19,chr20,chr21')
+def faireanalysis(bam1, bam2, chr):
     """A program for FAIRE-seq analysis and comparison"""
 
+    if chr:
+        reference_list = chr.split(',')
+    else:
+        reference_list = pysam.AlignmentFile(bam1 + '.sorted.bam', 'rb').references
+
     start = time.time()
-    for reference_name in pysam.AlignmentFile(bam1 + ".sorted.bam", "rb").references:
-        x = stepwise_read_observations(bam1, reference_name)
-        y = stepwise_read_observations(bam2, reference_name)
+    for reference_name in reference_list:
+        print(reference_name)
+        x = Reader.stepwise_read_observations(bam1, reference_name)
+        y = Reader.stepwise_read_observations(bam2, reference_name)
 
         hmmMult = MultiPoissonHMM(n_components=9, use_null=True)
         x_2dim = np.array([x, y])
+
         hmmMult.fit([x_2dim])
-        t = hmmMult.predict(x_2dim, "map")
 
-        print("similarity: {0:.2f}%".format((1 - len(t[t > 2.]) / len(t)) * 100))
+        t = hmmMult.predict(x_2dim, 'map')
 
-        start_position = list(pysam.AlignmentFile("../intermediate/"+bam1+".sorted.bam").fetch(reference_name))[0].reference_start
-        writer(t, reference_start=start_position, chr=reference_name)
+        print('similarity: {0:.2f}%'.format((1 - len(t[t > 2.]) / len(t)) * 100))
+
+        start_position = list(pysam.AlignmentFile('../intermediate/'+bam1+'.sorted.bam').fetch(reference_name))[0].reference_start
+        Writer.save(t, reference_start=start_position, chr=reference_name)
 
         log_p0 = np.log(hmmMult.posteriors[:, 0:2].sum(axis=1))
         mask = log_p0 <= np.log(.5)
@@ -200,8 +196,9 @@ def faireanalysis(bam1, bam2, chr=None):
 
         end = time.time()
         print('time for {0}: {1} sec'.format(reference_name, round((end - start), 2)))
+        start = end
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     faireanalysis()
 
 # 1st bam file name: ENCFF000TJR
