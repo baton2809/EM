@@ -156,67 +156,73 @@ class Writer(object):
                     bed_file.write('{0}\t{1}\t{2}\n'.format(chr, reference_start+k*s, reference_start+k*e))
                     e = s = -1
 
-def train(bam1, bam2, reference_name):
+    @staticmethod
+    def WIG_save(X, reference_start, chr, group):
+        # TODO if already exists then...
+        with open('../intermediate/'+chr+'_'+group+'.wig', 'a') as wig_file:
+            # TODO first row of output file: fixedStep  chrom=chrN  start=position  step=stepInterval
+            if X.shape:
+                X = X.sum(axis=0) / X.shape[0]
+            for i in range(len(X)):
+                wig_file.write('%s\n' % X[i])
+
+def train(gr1, gr2, reference_name):
     start = time.time()
     print(reference_name)
-    x = Reader.stepwise_read_observations(bam1, reference_name)
-    y = Reader.stepwise_read_observations(bam2, reference_name)
 
-    hmmMult = MultiPoissonHMM(n_components=9, use_null=True)
-    x_2dim = np.array([x, y])
+    x = []
+    y = []
+    gr1_sep, gr2_sep = gr1.split(','), gr2.split(',')
+    for bam in gr1_sep:         # не нравится, что дублируется код! Как-то некрасиво.
+        x.append(Reader.stepwise_read_observations(bam, reference_name))
+    for bam in gr2_sep:
+        y.append(Reader.stepwise_read_observations(bam, reference_name))
 
-    hmmMult.fit([x_2dim])
-
-    t = hmmMult.predict(x_2dim, 'map')
+    hmm_mult = MultiPoissonHMM(n_components=9, use_null=True)
+    x_2dim = np.array(x + y)
+    hmm_mult.fit([x_2dim])
+    t = hmm_mult.predict(x_2dim, 'map')
 
     print('similarity: {0:.2f}%'.format((1 - len(t[t > 2.]) / len(t)) * 100))
 
-    start_position = list(pysam.AlignmentFile('../intermediate/'+bam1+'.sorted.bam').fetch(reference_name))[0].reference_start
+    start_position = list(pysam.AlignmentFile('../intermediate/'+gr1_sep[0]+'.sorted.bam')
+                          .fetch(reference_name))[0].reference_start
     Writer.save(t, reference_start=start_position, chr=reference_name)
 
-    log_p0 = np.log(hmmMult.posteriors[:, 0:2].sum(axis=1))
+    # не нравится, что дублируется код! Что же предпринять?
+    gr1_bams = [bam[-3::] for bam in gr1_sep]
+    gr1_bams = '_'.join(gr1_bams)
+    gr2_bams = [bam[-3::] for bam in gr2_sep]
+    gr2_bams = '_'.join(gr2_bams)
+
+    Writer.WIG_save(np.array(x), reference_start=start_position, chr=reference_name, group=gr1_bams)
+    Writer.WIG_save(np.array(y), reference_start=start_position, chr=reference_name, group=gr2_bams)
+
+    log_p0 = np.log(hmm_mult.posteriors[:, 0:2].sum(axis=1))
     mask = log_p0 <= np.log(.5)
-    print('mFDR =', hmmMult.estimate_fdr(log_p0, mask))
+    print('mFDR =', hmm_mult.estimate_fdr(log_p0, mask))
 
     end = time.time()
     print('time for {0}: {1} sec'.format(reference_name, round((end - start), 2)))
 
 @click.command()
-@click.option('--bam1', prompt='1st bam file name',
-              help='1st bam file name without extension .bam')
-@click.option('--bam2', prompt='2nd bam file name',
-              help='2nd bam file name without extension .bam')
+@click.option('--gr1', prompt='1st group',
+              help='1st group of bam files without extension .bam')
+@click.option('--gr2', prompt='2nd group',
+              help='2nd group of bam files without extension .bam')
 @click.option('--chr', default=None, help='Train specific chromatin(s).\n'
                                           'Write chromatin names separated by commas without spaces\n'
                                           'If none chromatin specifies the tool will analyze a whole file.\n'
                                           'Example: --chr=chr19,chr20,chr21')
-def faireanalysis(bam1, bam2, chr):
+def faireanalysis(gr1, gr2, chr):
     """A program for FAIRE-seq analysis and comparison"""
 
     if chr:
         reference_list = chr.split(',')
     else:
-        reference_list = pysam.AlignmentFile(bam1 + '.sorted.bam', 'rb').references
+        reference_list = pysam.AlignmentFile(gr1.split(',')[0] + '.sorted.bam', 'rb').references
 
-    # for reference_name in reference_list:
-    #     train(reference_name, bam1, bam2)
-
-    Parallel(n_jobs=2, backend="multiprocessing")(delayed(train)(bam1, bam2, reference_name) for reference_name in reference_list)
+    Parallel(n_jobs=2)(delayed(train)(gr1, gr2, reference_name) for reference_name in reference_list)
 
 if __name__ == '__main__':
     faireanalysis()
-
-# 1st bam file name: ENCFF000TJR
-# 2nd bam file name: ENCFF000TJP
-# reference_name:  chr1
-# similarity: 81.49%
-# mFDR = 1.83796232665e-05
-# reference_name:  chr2
-# similarity: 93.52%
-# mFDR = 0.00260956482779
-# reference_name:  chr3
-# similarity: 94.16%
-# mFDR = 0.00287397879984
-# reference_name:  chr4
-# similarity: 94.61%
-# mFDR = 0.0102689483662
