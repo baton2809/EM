@@ -21,3 +21,32 @@ To install ``faireanalysis`` run::
 
 in the source code directory.
 
+Preparing
+=========
+
+Make sure you have installed the ``samtools``, see `samtools
+<https://github.com/samtools/samtools>`_.
+
+Move you ``bam`` files into source code directory and do sorting::
+
+                $ samtools sort XXX.bam XXX.sorted
+
+and then make index::
+
+                $ samtools index XXX.sorted.bam
+
+for each file.
+
+Running
+=======
+To run the tool without arguments do::
+
+                $ python faireanalysis.py
+        
+Use ``--help`` to learn more::
+        
+                $ python faireanalysis.py --help
+
+Format to run for example::
+
+                python faireanalysis.py --gr1=ENCFF000TJP,ENCFF000TJR --gr2=ENCFF000TJJ,ENCFF000TJK --chr=chr2,chr3
