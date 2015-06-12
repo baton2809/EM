@@ -20,7 +20,7 @@ from joblib import Parallel, delayed
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 # from ._speedups import compute_coverage  # if ud like to import module
-from _speedups import compute_coverage     # if ud like to run from console 
+from _speedups import compute_coverage     # if ud like to run from console
 
 k = 200
 
@@ -157,7 +157,7 @@ class Writer(object):
     """
     @staticmethod
     def save(pred, reference_start, chr):
-        with open('../intermediate/'+chr+'.bed', 'a') as bed_file:
+        with open(chr+'.bed', 'a') as bed_file:
             pred = (pred > 2).astype(int)
             e = s = -1
             for i in range(len(pred)):
@@ -171,7 +171,7 @@ class Writer(object):
     @staticmethod
     def WIG_save(X, reference_start, chr, group):
         # TODO if already exists then...
-        with open('../intermediate/'+chr+'_'+group+'.wig', 'a') as wig_file:
+        with open(chr+'_'+group+'.wig', 'a') as wig_file:
             # TODO first row of output file: fixedStep  chrom=chrN  start=position  step=stepInterval
             if X.shape:
                 X = X.sum(axis=0) / X.shape[0]
@@ -197,7 +197,7 @@ def train(gr1, gr2, reference_name):
 
     print('similarity: {0:.2f}%'.format((1 - len(t[t > 2.]) / len(t)) * 100))
 
-    start_position = list(pysam.AlignmentFile('../intermediate/'+gr1_sep[0]+'.sorted.bam')
+    start_position = list(pysam.AlignmentFile(gr1_sep[0]+'.sorted.bam')
                           .fetch(reference_name))[0].reference_start
     Writer.save(t, reference_start=start_position, chr=reference_name)
 
