@@ -1,5 +1,7 @@
 __author__ = 'artiom'
 
+"""A faireanalysis source code."""
+
 import time
 import math
 import string
@@ -17,7 +19,8 @@ from hmmlearn.base import _BaseHMM
 from joblib import Parallel, delayed
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
-from _speedups import compute_coverage
+# from ._speedups import compute_coverage  # if ud like to import module
+from _speedups import compute_coverage     # if ud like to run from console 
 
 k = 200
 
@@ -27,11 +30,17 @@ k = 200
 #                    compute_coverage(bamfile + ".sorted.bam", reference_name), fmt='%i')
 
 class Reader(object):
+    """
+    Reader class
+    """
     @staticmethod
     def stepwise_read_observations(bamfile, reference_name):
         return compute_coverage(bamfile + '.sorted.bam', reference_name)
 
 class MultiPoissonHMM(_BaseHMM):
+    """
+    MultiPoissonHMM class
+    """
     def __init__(self, *args, **kwargs):
         self.use_null = kwargs.pop('use_null', False)
         super(MultiPoissonHMM, self).__init__(*args, **kwargs)
@@ -143,6 +152,9 @@ class MultiPoissonHMM(_BaseHMM):
         return mFDR
 
 class Writer(object):
+    """
+    Writer class
+    """
     @staticmethod
     def save(pred, reference_start, chr):
         with open('../intermediate/'+chr+'.bed', 'a') as bed_file:
