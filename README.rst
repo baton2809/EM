@@ -1,5 +1,3 @@
-# EM
-
 faireanalysis
 ========
 
@@ -10,16 +8,16 @@ The algorithm is based on learning of Hidden Markov Model and is used to **compa
 Getting the latest code
 =======================
 
-To get the latest code using git, simply type:
+To get the latest code using git, simply type::
 
-    $ git clone git://github.com/baton2809/EM.git
+        $ git clone git://github.com/baton2809/EM.git
 
 Installing
 ==========
 
-To install ``faireanalysis`` run:
+To install ``faireanalysis`` run::
 
-    $ python setup.py install
+        $ python setup.py install
 
 in the source code directory.
 
