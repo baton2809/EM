@@ -49,4 +49,4 @@ Use ``--help`` to learn more::
 
 Format to run for example::
 
-                python faireanalysis.py --gr1=ENCFF000TJP,ENCFF000TJR --gr2=ENCFF000TJJ,ENCFF000TJK --chr=chr2,chr3
+                $ python faireanalysis.py --gr1=ENCFF000TJP,ENCFF000TJR --gr2=ENCFF000TJJ,ENCFF000TJK --chr=chr2,chr3
