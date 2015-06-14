@@ -11,16 +11,13 @@ from hmmlearn.base import _BaseHMM
 from scipy.stats import poisson
 from scipy.misc import logsumexp
 
-pyximport.install(setup_args={'include_dirs': np.get_include()})
-from ._speedups import compute_coverage  # if ud like to import module
-# from _speedups import compute_coverage     # if ud like to run from console
+try:
+    from ._speedups import compute_coverage
+except ImportError:  # Allow running from IDE.
+    pyximport.install(setup_args={'include_dirs': np.get_include()})
+    from _speedups import compute_coverage
 
 k = 200
-
-# def read_observations(bamfile):
-#     for reference_name in pysam.AlignmentFile(bamfile + ".sorted.bam", "rb").references:
-#         np.savetxt('../data/coverages/' + bamfile + '__' + reference_name,
-#                    compute_coverage(bamfile + ".sorted.bam", reference_name), fmt='%i')
 
 
 class Reader(object):
