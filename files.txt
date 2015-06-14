@@ -1,0 +1,15 @@
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/dependency_links.txt
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/native_libs.txt
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/not-zip-safe
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/PKG-INFO
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/SOURCES.txt
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/EGG-INFO/top_level.txt
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__init__.py
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__main__.py
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/_speedups.py
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/_speedups.so
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/faireanalysis.py
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__pycache__/__init__.cpython-34.pyc
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__pycache__/__main__.cpython-34.pyc
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__pycache__/_speedups.cpython-34.pyc
+/Users/artiom/miniconda3/lib/python3.4/site-packages/fairy-1.0-py3.4-macosx-10.5-x86_64.egg/fairy/__pycache__/faireanalysis.cpython-34.pyc

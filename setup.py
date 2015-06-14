@@ -9,7 +9,7 @@ import sys
 from setuptools import setup, Extension
 
 
-DISTNAME = "faireanalysis"
+DISTNAME = "fairy"
 DESCRIPTION = "A tool of comparing and analyzing"
 LONG_DESCRIPTION = open("README.rst").read()
 MAINTAINER = "Artiom Butomov"
@@ -33,23 +33,23 @@ CLASSIFIERS = [
                "Programming Language :: Python :: 3.4",
                ]
 
-import faireanalysis
+import fairy
 
-VERSION = faireanalysis.__version__
+VERSION = fairy.__version__
 
 setup_options = dict(
-                     name="faireanalysis",
+                     name="fairy",
                      version=VERSION,
                      description=DESCRIPTION,
                      long_description=LONG_DESCRIPTION,
                      maintainer=MAINTAINER,
                      maintainer_email=MAINTAINER_EMAIL,
                      license=LICENSE,
-                     url="https://github.com/baton2809/EM",
-                     packages=["faireanalysis"],
+                     url="https://github.com/baton2809/thesis",
+                     packages=["fairy"],
                      classifiers=CLASSIFIERS,
                      ext_modules=[
-                                  Extension("faireanalysis._speedups", ["faireanalysis/_speedups.c"])
+                                  Extension("fairy._speedups", ["fairy/_speedups.c"])
                                   ]
                      )
 

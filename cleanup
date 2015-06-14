@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ ! -f files.txt ]; then
+    cat files.txt | xargs rm -rf 
+fi
+rm -rf build dist fairy.egg-info
+cd fairy
+rm -rf __pycache__
+cd ..

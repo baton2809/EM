@@ -41,12 +41,20 @@ Running
 =======
 To run the tool without arguments do::
 
-                $ python faireanalysis.py
+                $ python -m fairy
         
 Use ``--help`` to learn more::
         
-                $ python faireanalysis.py --help
+                $ python -m fairy --help
 
 Format to run for example::
 
-                $ python faireanalysis.py --gr1=ENCFF000TJP,ENCFF000TJR --gr2=ENCFF000TJJ,ENCFF000TJK --chr=chr2,chr3
+                $ python -m fairy --gr1=ENCFF000TJP,ENCFF000TJR --gr2=ENCFF000TJJ,ENCFF000TJK --chr=chr2,chr3
+
+Uninstall
+=========
+To uninstall call::
+
+                $ chmod u+x cleanup
+                $ ./cleanup
+

@@ -1,6 +1,6 @@
 __author__ = 'artiom'
 
-"""A faireanalysis source code."""
+"""A fairy source code."""
 
 import time
 import math
@@ -19,8 +19,8 @@ from hmmlearn.base import _BaseHMM
 from joblib import Parallel, delayed
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
-# from ._speedups import compute_coverage  # if ud like to import module
-from _speedups import compute_coverage     # if ud like to run from console
+from ._speedups import compute_coverage  # if ud like to import module
+# from _speedups import compute_coverage     # if ud like to run from console
 
 k = 200
 
@@ -235,9 +235,8 @@ def faireanalysis(gr1, gr2, chr):
                               .intersection(pysam.AlignmentFile(gr2.split(',')[0] + '.sorted.bam', 'rb').references))
     # exclude a chromosome M.
     reference_list = list(set(reference_list) - set(['chrM']))
-    print(reference_list)
 
     Parallel(n_jobs=2)(delayed(train)(gr1, gr2, reference_name) for reference_name in reference_list)
 
 # if __name__ == '__main__':
-#     faireanalysis()
+#     fairy()
