@@ -185,7 +185,7 @@ def train(gr1, gr2, reference_name):
     x = []
     y = []
     gr1_sep, gr2_sep = gr1.split(','), gr2.split(',')
-    for bam in gr1_sep:         # не нравится, что дублируется код! Как-то некрасиво.
+    for bam in gr1_sep:
         x.append(Reader.stepwise_read_observations(bam, reference_name))
     for bam in gr2_sep:
         y.append(Reader.stepwise_read_observations(bam, reference_name))
@@ -201,7 +201,6 @@ def train(gr1, gr2, reference_name):
                           .fetch(reference_name))[0].reference_start
     Writer.save(t, reference_start=start_position, chr=reference_name)
 
-    # не нравится, что дублируется код! Что же предпринять?
     gr1_bams = [bam[-3::] for bam in gr1_sep]
     gr1_bams = '_'.join(gr1_bams)
     gr2_bams = [bam[-3::] for bam in gr2_sep]
@@ -228,13 +227,17 @@ def train(gr1, gr2, reference_name):
                                           'Example: --chr=chr19,chr20,chr21')
 def faireanalysis(gr1, gr2, chr):
     """A program for FAIRE-seq analysis and comparison"""
-
     if chr:
         reference_list = chr.split(',')
     else:
-        reference_list = pysam.AlignmentFile(gr1.split(',')[0] + '.sorted.bam', 'rb').references
+        # distiction exclusion
+        reference_list = list(set(pysam.AlignmentFile(gr1.split(',')[0] + '.sorted.bam', 'rb').references)
+                              .intersection(pysam.AlignmentFile(gr2.split(',')[0] + '.sorted.bam', 'rb').references))
+    # exclude a chromosome M.
+    reference_list = list(set(reference_list) - set(['chrM']))
+    print(reference_list)
 
     Parallel(n_jobs=2)(delayed(train)(gr1, gr2, reference_name) for reference_name in reference_list)
 
-if __name__ == '__main__':
-    faireanalysis()
+# if __name__ == '__main__':
+#     faireanalysis()
