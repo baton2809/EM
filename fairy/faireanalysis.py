@@ -1,22 +1,15 @@
-__author__ = 'artiom'
-
-"""A fairy source code."""
+# -*- coding: utf-8 -*-
 
 import time
-import math
-import string
 
 import click
 import pysam
 import pyximport
-from sklearn import cluster
-from itertools import count
-from collections import Counter
 import numpy as np
+from joblib import Parallel, delayed
+from hmmlearn.base import _BaseHMM
 from scipy.stats import poisson
 from scipy.misc import logsumexp
-from hmmlearn.base import _BaseHMM
-from joblib import Parallel, delayed
 
 pyximport.install(setup_args={'include_dirs': np.get_include()})
 from ._speedups import compute_coverage  # if ud like to import module
@@ -29,6 +22,7 @@ k = 200
 #         np.savetxt('../data/coverages/' + bamfile + '__' + reference_name,
 #                    compute_coverage(bamfile + ".sorted.bam", reference_name), fmt='%i')
 
+
 class Reader(object):
     """
     Reader class
@@ -36,6 +30,7 @@ class Reader(object):
     @staticmethod
     def stepwise_read_observations(bamfile, reference_name):
         return compute_coverage(bamfile + '.sorted.bam', reference_name)
+
 
 class MultiPoissonHMM(_BaseHMM):
     """
@@ -151,6 +146,7 @@ class MultiPoissonHMM(_BaseHMM):
         mFDR = np.exp(acc - np.log(count))
         return mFDR
 
+
 class Writer(object):
     """
     Writer class
@@ -177,6 +173,7 @@ class Writer(object):
                 X = X.sum(axis=0) / X.shape[0]
             for i in range(len(X)):
                 wig_file.write('%s\n' % X[i])
+
 
 def train(gr1, gr2, reference_name):
     start = time.time()
@@ -215,6 +212,7 @@ def train(gr1, gr2, reference_name):
 
     end = time.time()
     print('time for {0}: {1} sec'.format(reference_name, round((end - start), 2)))
+
 
 @click.command()
 @click.option('--gr1', prompt='1st group',
